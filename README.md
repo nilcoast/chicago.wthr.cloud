@@ -17,19 +17,19 @@ curl -s 'https://wthr.cloud/api/forecast?latitude=41.975844&longitude=-87.663396
 
 <!-- name: wthr -->
 ```
-"Patchy fog before noon. Mostly cloudy. High near 50, with temperatures falling to around 43 in the afternoon. West southwest wind 10 to 15 mph, with gusts as high as 30 mph. New rainfall amounts less than a tenth of an inch possible."
+"Partly cloudy, with a low around 33. West wind 10 to 15 mph, with gusts as high as 25 mph."
 ```
 
 #### Gets summary from LLM
 
 <!-- target: llm -->
 ```bash
-curl -s -H "Authorization: Bearer ${OLLAMA_KEY}" https://ollama.home.benoist.dev/v1/chat/completions -d '{"model": "llama3.2", "messages": [{"role": "user", "content": "Reformat the following Chicago weather report from 12/16/2024 @ 9am as a tweet less than 240 characters. Please use emoji. Do not make up anything. Do not editorialize. Do not add any hashtags. Always end the message with a link to https://chicago.wthr.cloud: Patchy fog before noon. Mostly cloudy. High near 50, with temperatures falling to around 43 in the afternoon. West southwest wind 10 to 15 mph, with gusts as high as 30 mph. New rainfall amounts less than a tenth of an inch possible."}] }' | jq .choices[0].message.content
+curl -s -H "Authorization: Bearer ${OLLAMA_KEY}" https://ollama.home.benoist.dev/v1/chat/completions -d '{"model": "llama3.2", "messages": [{"role": "user", "content": "Reformat the following Chicago weather report from 12/16/2024 @8 pm as a tweet less than 240 characters. Please use emoji. Do not make up anything. Do not editorialize. Do not add any hashtags. Always end the message with a link to https://chicago.wthr.cloud: Partly cloudy, with a low around 33. West wind 10 to 15 mph, with gusts as high as 25 mph."}] }' | jq .choices[0].message.content
 ```
 
 <!-- name: llm -->
 ```
-"\"Morning weather alert 🛋️🌫️: Patchy fog before noon, mostly cloudy, high near 50, falling to 43 in the afternoon. Winds WSW 10-15mph with gusts up to 30mph. <https://chicago.wthr.cloud>"
+"\"Partly cloudy tonight, low of 33°. Windy west @ 10-15 mph, gusting up to 25 mph. Stay warm! https://chicago.wthr.cloud\""
 ```
 
 #### Post result to bluesky account @chicago.wthr.cloud
@@ -40,5 +40,5 @@ import os
 
 client = Client()
 client.login('chicago.wthr.cloud', os.environ['CHICAGO_WTHR_BSKY_PASS'])
-post = client.send_post('\"Morning weather alert 🛋️🌫️: Patchy fog before noon, mostly cloudy, high near 50, falling to 43 in the afternoon. Winds WSW 10-15mph with gusts up to 30mph. <https://chicago.wthr.cloud>')
+post = client.send_post('Partly cloudy tonight, low of 33°. Windy west @ 10-15 mph, gusting up to 25 mph. Stay warm! https://chicago.wthr.cloud')
 ```
