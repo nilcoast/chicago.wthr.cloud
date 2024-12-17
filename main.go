@@ -6,6 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/reiver/go-atproto/com/atproto/repo"
+	"github.com/reiver/go-atproto/com/atproto/server"
 )
 
 type WthrResp struct {
@@ -37,13 +43,23 @@ type LlamaReq struct {
 }
 
 var Prompt = `
-Reformat the following Chicago weather report from %s as a tweet less than 240 characters.
+
+You are a helpful weather posting bot. You live in Chicago. You only use weather reporting terms like: wind speed in mph, temperature in fahrenheit. You never make up the weather, because the actual forecast from the National Weather service is included in your context. It's labeled "Current Forecast"
+
+Reformat the following Chicago weather report as a tweet less than 240 characters.
 
 Please use emoji.
 Do not make up anything.
 Do not editorialize.
 Do not add any hashtags.
+Please include the current date and time. I've provided it as "Current Date".
+Always include one emoji that best describes the current weather conditions.
 
+Never make up a time. Remove the time if unsure.
+
+Be as creative and descriptive as the 240 characters allow.
+
+Current Date: %s
 Current Forecast:
 
 %s
@@ -61,22 +77,63 @@ func main() {
 		log.Panic(err)
 	}
 
+	now := time.Now().Format(time.RubyDate)
+
 	req := &LlamaReq{
-		Model: "llama3.2",
+		Model: "mistral-nemo",
 		Messages: []Message{
 			{
 				Role:    "user",
-				Content: fmt.Sprintf(Prompt, "current-time", wthr.Current.Properties.Periods[0].DetailedForecast),
+				Content: fmt.Sprintf(Prompt, now, wthr.Current.Properties.Periods[0].DetailedForecast),
 			},
 		},
 	}
 
+	log.Printf("sending current forecast %+v", req)
+
 	b, _ := json.Marshal(req)
-	http.Post(
+	llmReq, err := http.NewRequest(
+		"POST",
 		"https://ollama.home.benoist.dev/v1/chat/completions",
-		"application/json",
 		bytes.NewBuffer(b),
 	)
 
-	// do the post
+	r, err := http.DefaultClient.Do(llmReq)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	var llm LlamaResp
+	err = json.NewDecoder(r.Body).Decode(&llm)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	log.Printf("Going to post: %+v", llm.Choices[0].Message.Content)
+
+	password := os.Getenv("CHICAGO_WTHR_BSKY_PASS")
+	identifier := "chicago.wthr.cloud"
+
+	var dst server.CreateSessionResponse
+	err = server.CreateSession(&dst, identifier, password)
+	if nil != err {
+		log.Panicf("CREATE SESSION: %s", err)
+	}
+
+	bearerToken := dst.AccessJWT
+
+	when := time.Now().Format("2006-01-02T15:04:05.999Z")
+
+	text := strings.Trim(llm.Choices[0].Message.Content, "\"")
+	// log.Printf("GOT TOKEN %s", bearerToken)
+	post := map[string]any{
+		"$type":     "app.bsky.feed.post",
+		"text":      text,
+		"createdAt": when,
+	}
+
+	err = repo.CreateRecord(&dst, bearerToken, identifier, "app.bsky.feed.post", post)
+	if nil != err {
+		log.Panicf("CREATE RECORD: %s", err)
+	}
 }
