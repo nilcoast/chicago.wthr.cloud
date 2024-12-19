@@ -74,7 +74,7 @@ func main() {
 	var wthr WthrResp
 	err = json.NewDecoder(resp.Body).Decode(&wthr)
 	if err != nil {
-		log.Panic(err)
+		log.Panicf("could not decode wthr %s", err)
 	}
 
 	now := time.Now().Format(time.RubyDate)
@@ -100,13 +100,13 @@ func main() {
 
 	r, err := http.DefaultClient.Do(llmReq)
 	if err != nil {
-		log.Panic(err)
+		log.Panicf("could not get completion %s %+v", err, r)
 	}
 
 	var llm LlamaResp
 	err = json.NewDecoder(r.Body).Decode(&llm)
 	if err != nil {
-		log.Panic(err)
+		log.Panicf("could not decode llm %s", err)
 	}
 
 	log.Printf("Going to post: %+v", llm.Choices[0].Message.Content)
